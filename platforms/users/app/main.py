@@ -1,10 +1,17 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
 from starlette import status
 from starlette.exceptions import HTTPException
 
+from app.auth import get_token
+from app.dependencies import AuthRequired
+from app.schemas import User, LoginResponse, JWTClaims
+
 app = FastAPI()
 
+"""
+You should never store non hashed passwords, use bcrypt, argon or equivalent.
+Skipping for simplicity
+"""
 USERS_BY_ID = {
     "1": {
         "id": "1",
@@ -51,27 +58,9 @@ USERS_BY_ID = {
 }
 
 
-class User(BaseModel):
-    id: str
-    first_name: str
-    last_name: str
-
-    @staticmethod
-    def from_db(user_data: dict) -> "User":
-        return User(**user_data)
-
-
-
-
-
-@app.get("/users")
-def get_users() -> list[User]:
-    return [User.from_db(user_data) for user_data in USERS_BY_ID.values()]
-
-
-@app.get("/users/{user_id}")
-def get_user(user_id: str) -> User:
-    user_data = USERS_BY_ID.get(user_id)
+@app.get("/users/me")
+def get_user(claims: JWTClaims = AuthRequired()) -> User:
+    user_data = USERS_BY_ID.get(claims.sub)
     if not user_data:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
@@ -79,12 +68,12 @@ def get_user(user_id: str) -> User:
     return User.from_db(user_data)
 
 
-# @app.get("/login")
-# def login(username: str, password: str) -> dict:
-#     users = [user for user in USERS_BY_ID.values() if user["username"] == username]
-#     if len(users) == 0 or len(users) > 1:
-#         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-#     user_data = users[0]
-#     if user_data["password"] != password:
-#         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-#     return py
+@app.get("/login")
+def login(username: str, password: str) -> LoginResponse:
+    users = [user for user in USERS_BY_ID.values() if user["username"] == username]
+    if len(users) == 0 or len(users) > 1 or not password:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    user_data = users[0]
+    if user_data["password"] != password:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    return LoginResponse(token=get_token(User.from_db(user_data)))
