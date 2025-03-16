@@ -35,6 +35,7 @@ def decode_token(token: str) -> JWTClaims:
             SECRET_KEY,
             algorithms=[ALGORITHM],
             options={"verify_signature": True},
+            audience="sofos",
         )
         claims = JWTClaims(**payload)
     except (jwt.PyJWTError, ValidationError):

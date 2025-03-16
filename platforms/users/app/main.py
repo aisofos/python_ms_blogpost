@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from starlette import status
 from starlette.exceptions import HTTPException
 
@@ -59,7 +59,7 @@ USERS_BY_ID = {
 
 
 @app.get("/users/me")
-def get_user(claims: JWTClaims = AuthRequired()) -> User:
+def get_user(claims: JWTClaims = Depends(AuthRequired())) -> User:
     user_data = USERS_BY_ID.get(claims.sub)
     if not user_data:
         raise HTTPException(
